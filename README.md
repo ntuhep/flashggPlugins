@@ -23,7 +23,7 @@ cd ..
 source flashgg/setup.sh
 scram b -j4
 
-git clone https://github.com/ntuhep/flashggPlugins
+git clone https://github.com/ntuhep/flashggPlugins -b Legacy2016_8028
 scram b -j4
 ```
 
