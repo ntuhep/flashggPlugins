@@ -13,7 +13,7 @@
 #include "flashgg/DataFormats/interface/Electron.h"
 #include "flashgg/DataFormats/interface/Muon.h"
 #include "flashgg/DataFormats/interface/Met.h"
-#include "SimDataFormats/HTXS/interface/HiggsTemplateCrossSections.h"
+//#include "SimDataFormats/HTXS/interface/HiggsTemplateCrossSections.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 #include "FWCore/Common/interface/TriggerNames.h"
@@ -29,6 +29,7 @@ class flashggAnaTreeMakerWithSyst
         ~flashggAnaTreeMakerWithSyst();
         void Analyze( const edm::Event &, const edm::EventSetup &, bool );
         void RegisterTree( TTree* );
+        const reco::GenParticle* getMother( const reco::GenParticle &part );
     
     private:
     
@@ -49,7 +50,7 @@ class flashggAnaTreeMakerWithSyst
         edm::EDGetTokenT<edm::View<PileupSummaryInfo>>          pileUpToken_;
         edm::EDGetTokenT<edm::TriggerResults>                   triggerToken_;
         edm::EDGetTokenT<edm::TriggerResults>                   mettriggerToken_;
-        edm::EDGetTokenT<HTXS::HiggsClassification>             newHTXSToken_;
+        edm::EDGetTokenT<edm::TriggerResults>                   flashggmettriggerToken_;
         std::string pathName_;
         bool isMiniAOD_;
         bool storeSyst_;
@@ -69,7 +70,7 @@ class flashggAnaTreeMakerWithSyst
         edm::Handle<edm::View< PileupSummaryInfo> >           pileupInfo;
         edm::Handle<edm::TriggerResults >                     triggerHandle;
         edm::Handle<edm::TriggerResults >                     mettriggerHandle;
-        edm::Handle<HTXS::HiggsClassification >               htxsClassification;
+        edm::Handle<edm::TriggerResults >                     flashggmettriggerHandle;
 };
 
 #endif

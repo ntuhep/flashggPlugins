@@ -5,7 +5,7 @@ import FWCore.ParameterSet.VarParsing as opts
 options = opts.VarParsing ('analysis')
 
 options.register('year',
-                 '2017',
+                 '2016',
                  opts.VarParsing.multiplicity.singleton,
                  opts.VarParsing.varType.string,
                  'year'
@@ -58,9 +58,9 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 
 if options.year == '2016':
     if options.processType == 'data':
-        process.GlobalTag = GlobalTag(process.GlobalTag, '94X_dataRun2_v10')
+        process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_2016LegacyRepro_v4')
     else:
-        process.GlobalTag = GlobalTag(process.GlobalTag, '94X_mcRun2_asymptotic_v3')
+        process.GlobalTag = GlobalTag(process.GlobalTag, '80X_mcRun2_asymptotic_2016_miniAODv2')
 elif options.year == '2017':
     if options.processType == 'data':
         process.GlobalTag = GlobalTag(process.GlobalTag, '94X_dataRun2_ReReco_EOY17_v6')
@@ -71,7 +71,7 @@ process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(300) )
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32( 100 )
-process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(False) )
+process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 
 process.source = cms.Source ("PoolSource",
         fileNames = cms.untracked.vstring(
@@ -84,7 +84,8 @@ process.source = cms.Source ("PoolSource",
 #'/store/group/phys_higgs/cmshgg/spigazzi/flashgg/RunIIFall17-3_2_0/RunIIFall17-3_2_0/DoubleEG/RunIIFall17-3_2_0-RunIIFall17-3_2_0-v0-Run2017F-09May2018-v1/181008_110542/0000/myMicroAODOutputFile_572.root'
 #'/store/data/Run2017D/DoubleEG/MINIAOD/31Mar2018-v1/00000/002F7CD1-9D37-E811-A03E-B499BAABCF1A.root'
 #'/store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIIFall17-3_1_0/3_1_0/GluGluHToGG_M125_13TeV_amcatnloFXFX_pythia8_PSWeights/RunIIFall17-3_1_0-3_1_0-v0-RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14_ext1-v1/180605_202241/0000/myMicroAODOutputFile_3.root'
-'root://maite.iihe.ac.be:/pnfs/iihe/cms/store/user/kskovpen/tHGG/MicroAOD/2017_v20190402/RunIIFall18-4_0_0-44-g36175afd/ZGToLLG_01J_5f_TuneCP5_13TeV-amcatnloFXFX-pythia8/2017_v20190402-RunIIFall18-4_0_0-44-g36175afd-v0-RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v3/190402_221745/0000/myMicroAODOutputFile_97.root'
+#'root://maite.iihe.ac.be:/pnfs/iihe/cms/store/user/kskovpen/tHGG/MicroAOD/2017_v20190402/RunIIFall18-4_0_0-44-g36175afd/ZGToLLG_01J_5f_TuneCP5_13TeV-amcatnloFXFX-pythia8/2017_v20190402-RunIIFall18-4_0_0-44-g36175afd-v0-RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v3/190402_221745/0000/myMicroAODOutputFile_97.root'
+'/store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIISummer16-2_4_1-25ns_Moriond17/2_4_1/VBFHToGG_M-125_13TeV_powheg_pythia8/RunIISummer16-2_4_1-25ns_Moriond17-2_4_1-v0-RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/170114_092754/0000/myMicroAODOutputFile_1.root'
 #'/store/mc/RunIIFall17MiniAODv2/TT_FCNC-aTtoHJ_Thadronic_HToaa_eta_hut-MadGraph5-pythia8/MINIAODSIM/PU2017_12Apr2018_94X_mc2017_realistic_v14-v2/50000/FA62F95C-CAAB-E811-BF6F-001E67E713A4.root'
 #'/store/mc/RunIIFall17MiniAODv2/GluGluHToGG_M125_13TeV_amcatnloFXFX_pythia8/MINIAODSIM/PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/90000/EEC90FD7-A242-E811-AA78-EC0D9A8225FE.root'
 #'/store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIIFall17-3_1_0/3_1_0/TTJets_TuneCP5_13TeV-amcatnloFXFX-pythia8/RunIIFall17-3_1_0-3_1_0-v0-RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/180609_083905/0002/myMicroAODOutputFile_2040.root'
@@ -119,7 +120,7 @@ if options.runMiniAOD:
 # MC   : Store in Ntuple
 #---------------------------------------------------------------------------------------------
 from HLTrigger.HLTfilters.hltHighLevel_cfi import hltHighLevel
-process.hltHighLevel= hltHighLevel.clone(HLTPaths = cms.vstring("HLT_Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90_v*",))
+process.hltHighLevel= hltHighLevel.clone(HLTPaths = cms.vstring("HLT_Diphoton30_18_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90_v*",))
 if options.processType == 'data':
     process.stdDiPhotonJetsSeq += process.hltHighLevel
 
@@ -156,13 +157,13 @@ for i in range(0,maxJetCollections):
 #---------------------------------------------------------------------------------------------
 # Merge DiPhoton and Jets modules
 #---------------------------------------------------------------------------------------------
-process.basicSeq = cms.Sequence(process.flashggUpdatedIdMVADiPhotons
-                               *process.flashggPreselectedDiPhotons
-                               *process.flashggDiPhotonMVA
-                               *process.flashggUnpackedJets
-                                )
+#process.basicSeq = cms.Sequence(process.flashggUpdatedIdMVADiPhotons
+#                               *process.flashggPreselectedDiPhotons
+#                               *process.flashggDiPhotonMVA
+#                               *process.flashggUnpackedJets
+#                                )
 
-process.stdDiPhotonJetsSeq *= process.basicSeq
+#process.stdDiPhotonJetsSeq *= process.basicSeq
 
 #---------------------------------------------------------------------------------------------
 # Systematics setting
@@ -172,6 +173,15 @@ diphotonSystematicsTask = prepareflashggDiPhotonSystematicsTask(process, options
 diphosystname = ['']
 diphoton = [cms.InputTag('flashggPreselectedDiPhotons')]
 diphotonMVA = [cms.InputTag('flashggDiPhotonMVA')]
+
+process.basicSeq = cms.Sequence(process.flashggUpdatedIdMVADiPhotons
+                               *diphotonSystematicsTask
+                               *process.flashggPreselectedDiPhotons
+                               *process.flashggDiPhotonMVA
+                               *process.flashggUnpackedJets
+                                )
+
+process.stdDiPhotonJetsSeq *= process.basicSeq
 
 if options.doSystematics:
     for syst in getDiPhotonSystematicsList():
@@ -207,11 +217,10 @@ process.flashggNtuples = cms.EDAnalyzer('flashggAnaTreeMerge',
                                            PileUpTag               = cms.InputTag('slimmedAddPileupInfo'),
                                            TriggerTag              = cms.InputTag('TriggerResults::HLT'),
                                            MetTriggerTag           = cms.InputTag('TriggerResults::PAT'),
-                                           pathName                = cms.string("HLT_Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90"),
+                                           fMetTriggerTag          = cms.InputTag('TriggerResults::FLASHggMicroAOD'),
+                                           pathName                = cms.string("HLT_Diphoton30_18_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90"),
                                            isMiniAOD               = cms.bool(options.runMiniAOD),
                                            storeSyst               = cms.bool(options.doSystematics),
-                                           doHTXS                  = cms.bool(options.doHTXS),
-                                           HTXSTags                = HTXSInputTags
                                        )
 )
 
@@ -226,4 +235,4 @@ if options.processType == 'data':
 #---------------------------------------------------------------------------------------------
 # Final Path to run
 #---------------------------------------------------------------------------------------------
-process.p = cms.Path(process.stdDiPhotonJetsSeq,diphotonSystematicsTask)
+process.p = cms.Path(process.stdDiPhotonJetsSeq)

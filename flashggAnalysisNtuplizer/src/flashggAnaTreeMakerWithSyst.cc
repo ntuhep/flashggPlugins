@@ -27,20 +27,17 @@ flashggAnaTreeMakerWithSyst::flashggAnaTreeMakerWithSyst( const edm::InputTag &d
     genEventInfoToken_    ( iC.consumes< GenEventInfoProduct >                  ( iConfig.getParameter<InputTag> ( "GenEventInfo"   ) ) ),
     pileUpToken_          ( iC.consumes< View<PileupSummaryInfo > >             ( iConfig.getParameter<InputTag> ( "PileUpTag"      ) ) ),
     triggerToken_         ( iC.consumes< edm::TriggerResults >                  ( iConfig.getParameter<InputTag> ( "TriggerTag"     ) ) ),
-    mettriggerToken_      ( iC.consumes< edm::TriggerResults >                  ( iConfig.getParameter<InputTag> ( "MetTriggerTag"  ) ) )
+    mettriggerToken_      ( iC.consumes< edm::TriggerResults >                  ( iConfig.getParameter<InputTag> ( "MetTriggerTag"  ) ) ),
+    flashggmettriggerToken_ ( iC.consumes< edm::TriggerResults >                  ( iConfig.getParameter<InputTag> ( "fMetTriggerTag"  ) ) )
 {
     pathName_   = iConfig.getParameter<string>( "pathName" ) ;
     isMiniAOD_  = iConfig.getParameter<bool>( "isMiniAOD" ) ;
     storeSyst_  = iConfig.getParameter<bool>( "storeSyst" ) ;
-    doHTXS_     = iConfig.getParameter<bool>( "doHTXS" ) ;
 
     for (unsigned i = 0 ; i < inputTagJets_.size() ; i++) {
         auto token = iC.consumes<View<flashgg::Jet> >(inputTagJets_[i]);
         tokenJets_.push_back(token);
     }
-
-    ParameterSet HTXSps = iConfig.getParameterSet( "HTXSTags" );
-    newHTXSToken_ = iC.consumes<HTXS::HiggsClassification>( HTXSps.getParameter<InputTag>("ClassificationObj") );
 
 }
 
@@ -82,22 +79,22 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
     // ---------------------------------------------------------------------------------------------------------
     JetCollectionVector Jets( inputTagJets_.size() );
 
-    iEvent.getByToken( diphotonToken_     ,     diphotons           );
-    iEvent.getByToken( diphotonMVAToken_  ,     diphotonMVAs        );
+    iEvent.getByToken( diphotonToken_            ,     diphotons                  );
+    iEvent.getByToken( diphotonMVAToken_         ,     diphotonMVAs               );
     for( size_t j = 0; j < inputTagJets_.size(); ++j ) 
         iEvent.getByToken( tokenJets_[j], Jets[j] );
-    iEvent.getByToken( electronToken_     ,     electrons           );
-    iEvent.getByToken( muonToken_         ,     muons               );
-    iEvent.getByToken( metToken_          ,     met                 );
-    iEvent.getByToken( vertexToken_       ,     primaryVertices     );
-    iEvent.getByToken( beamSpotToken_     ,     recoBeamSpotHandle  );
-    iEvent.getByToken( rhoTaken_          ,     rho                 );
-    iEvent.getByToken( genParticleToken_  ,     genParticles        );
-    iEvent.getByToken( genEventInfoToken_ ,     genEventInfo        );
-    iEvent.getByToken( pileUpToken_       ,     pileupInfo          );
-    iEvent.getByToken( triggerToken_      ,     triggerHandle       );
-    iEvent.getByToken( mettriggerToken_   ,     mettriggerHandle    );
-    iEvent.getByToken( newHTXSToken_      ,     htxsClassification  );
+    iEvent.getByToken( electronToken_            ,     electrons                  );
+    iEvent.getByToken( muonToken_                ,     muons                      );
+    iEvent.getByToken( metToken_                 ,     met                        );
+    iEvent.getByToken( vertexToken_              ,     primaryVertices            );
+    iEvent.getByToken( beamSpotToken_            ,     recoBeamSpotHandle         );
+    iEvent.getByToken( rhoTaken_                 ,     rho                        );
+    iEvent.getByToken( genParticleToken_         ,     genParticles               );
+    iEvent.getByToken( genEventInfoToken_        ,     genEventInfo               );
+    iEvent.getByToken( pileUpToken_              ,     pileupInfo                 );
+    iEvent.getByToken( triggerToken_             ,     triggerHandle              );
+    iEvent.getByToken( mettriggerToken_          ,     mettriggerHandle           );
+    iEvent.getByToken( flashggmettriggerToken_   ,     flashggmettriggerHandle    );
 
     // dataformat Initialzation
     // ---------------------------------------------------------------------------------------------------------
@@ -138,12 +135,20 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
                 && !this->mettriggerHandle->error( index );
     };
 
+    const edm::TriggerNames& fmettriggername = iEvent.triggerNames( *flashggmettriggerHandle );
+    auto fpassMETFilter = [ this, &fmettriggername ] ( const std::string& triggername ) {
+         const unsigned index = fmettriggername.triggerIndex( triggername );
+         return    this->mettriggerHandle->accept( index )
+                && this->mettriggerHandle->wasrun( index )
+                && !this->mettriggerHandle->error( index );
+    };
+
     dataformat.Flag_HBHENoiseFilter                    = passMETFilter("Flag_HBHENoiseFilter");
     dataformat.Flag_HBHENoiseIsoFilter                 = passMETFilter("Flag_HBHENoiseIsoFilter");
     dataformat.Flag_EcalDeadCellTriggerPrimitiveFilter = passMETFilter("Flag_EcalDeadCellTriggerPrimitiveFilter");
     dataformat.Flag_goodVertices                       = passMETFilter("Flag_goodVertices");
     dataformat.Flag_globalSuperTightHalo2016Filter     = passMETFilter("Flag_globalSuperTightHalo2016Filter");
-    dataformat.Flag_BadPFMuonFilter                    = passMETFilter("Flag_BadPFMuonFilter");
+    dataformat.Flag_BadPFMuonFilter                    = fpassMETFilter("Flag_BadPFMuonFilter");
     dataformat.Flag_eeBadScFilter                      = iEvent.isRealData() ? passMETFilter("Flag_eeBadScFilter") : true;
 
     // Gen information
@@ -175,32 +180,25 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
                 dataformat.GenParticles_nMo    .emplace_back( it_gen->numberOfMothers() );
                 dataformat.GenParticles_nDa    .emplace_back( it_gen->numberOfDaughters() );
 	       
-	        dataformat.GenParticles_isHardProcess                              .emplace_back( it_gen->isHardProcess() );
-	        dataformat.GenParticles_fromHardProcessFinalState                  .emplace_back( it_gen->fromHardProcessFinalState() );
-	        dataformat.GenParticles_isPromptFinalState                         .emplace_back( it_gen->isPromptFinalState() );
-	        dataformat.GenParticles_isDirectPromptTauDecayProductFinalState    .emplace_back( it_gen->isDirectPromptTauDecayProductFinalState() );
+	            dataformat.GenParticles_isHardProcess                              .emplace_back( it_gen->isHardProcess() );
+	            dataformat.GenParticles_fromHardProcessFinalState                  .emplace_back( it_gen->fromHardProcessFinalState() );
+	            dataformat.GenParticles_isPromptFinalState                         .emplace_back( it_gen->isPromptFinalState() );
+	            dataformat.GenParticles_isDirectPromptTauDecayProductFinalState    .emplace_back( it_gen->isDirectPromptTauDecayProductFinalState() );
 	       
-	        const reco::GenParticle* mom = getMother(*it_gen);
+	            const reco::GenParticle* mom = getMother(*it_gen);
 	       
-	        dataformat.GenParticles_MomPdgID    .emplace_back( mom->pdgId() );
-	        dataformat.GenParticles_MomStatus   .emplace_back( mom->status() );
-	        dataformat.GenParticles_MomPt       .emplace_back( mom->pt() );
-	        dataformat.GenParticles_MomEta      .emplace_back( mom->eta() );
-	        dataformat.GenParticles_MomPhi      .emplace_back( mom->phi() );
-	        dataformat.GenParticles_MomMass     .emplace_back( mom->mass() );
+	            dataformat.GenParticles_MomPdgID    .emplace_back( mom->pdgId() );
+	            dataformat.GenParticles_MomStatus   .emplace_back( mom->status() );
+	            dataformat.GenParticles_MomPt       .emplace_back( mom->pt() );
+	            dataformat.GenParticles_MomEta      .emplace_back( mom->eta() );
+	            dataformat.GenParticles_MomPhi      .emplace_back( mom->phi() );
+	            dataformat.GenParticles_MomMass     .emplace_back( mom->mass() );
 
                 NGenParticles++;
             }
 
             dataformat.GenParticles_size = NGenParticles;
 
-            if(doHTXS_) {
-                dataformat.HTXSstage0cat = htxsClassification->stage0_cat;
-                dataformat.HTXSstage1cat = htxsClassification->stage1_cat_pTjet30GeV;
-                dataformat.HTXSnjets     = htxsClassification->jets30.size();
-                dataformat.HTXSpTH       = htxsClassification->p4decay_higgs.pt();
-                dataformat.HTXSpTV       = htxsClassification->p4decay_V.pt();
-            }
         }
     }
 
@@ -287,8 +285,8 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
             dataformat.elecs_EGMCutBasedIDTight        .emplace_back( it_elec->passTightId() );
             dataformat.elecs_passConvVeto              .emplace_back( it_elec->passConversionVeto() );
             dataformat.elecs_fggPhoVeto                .emplace_back( phoVeto( it_elec, diphoPtr, 0., 0.4, 0. ) );
-            dataformat.elecs_EnergyCorrFactor          .emplace_back( it_elec->userFloat("ecalTrkEnergyPostCorr") / it_elec->energy() );
-            dataformat.elecs_EnergyPostCorrErr         .emplace_back( it_elec->userFloat("ecalTrkEnergyErrPostCorr") );
+            //dataformat.elecs_EnergyCorrFactor          .emplace_back( it_elec->userFloat("ecalTrkEnergyPostCorr") / it_elec->energy() );
+            //dataformat.elecs_EnergyPostCorrErr         .emplace_back( it_elec->userFloat("ecalTrkEnergyErrPostCorr") );
             if ( storeSyst_ && !isDiphoSystTree ) {
                 dataformat.elecs_EnergyPostCorrScaleUp     .emplace_back( it_elec->userFloat("energyScaleUp") );
                 dataformat.elecs_EnergyPostCorrScaleDown   .emplace_back( it_elec->userFloat("energyScaleDown") );
@@ -325,7 +323,8 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
         // ---------------------------------------------------------------------------------------------------------
         int Nmuons = 0;
         for ( const auto& it_muon : muons->ptrs() ) {
-            if ( !it_muon->passed(reco::Muon::CutBasedIdLoose) ) continue;
+            //if ( !it_muon->passed(reco::Muon::CutBasedIdLoose) ) continue;
+            if ( !muon::isLooseMuon(*it_muon) ) continue;
             if ( fabs( it_muon->eta() ) > 2.4 ) continue;
 
             int vtxInd = 0;
@@ -348,7 +347,7 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
             dataformat.muons_Energy                  .emplace_back( it_muon->energy() );
             dataformat.muons_BestTrackDz             .emplace_back( it_muon->muonBestTrack()->dz( diphoPtr->vtx()->position() ) );
             dataformat.muons_BestTrackDxy            .emplace_back( it_muon->muonBestTrack()->dxy( diphoPtr->vtx()->position() ) );
-            dataformat.muons_CutBasedIdMedium        .emplace_back( it_muon->passed(reco::Muon::CutBasedIdMedium) );
+            dataformat.muons_CutBasedIdMedium        .emplace_back( muon::isMediumMuon(*it_muon) );
             dataformat.muons_CutBasedIdTight         .emplace_back( muon::isTightMuon( *it_muon, *(diphoPtr->vtx()) ) );
             dataformat.muons_CutBasedIdTight_bestVtx .emplace_back( muon::isTightMuon( *it_muon, *(vertexPointers[vtxInd]) ) );
             dataformat.muons_PFIsoDeltaBetaCorrR04   .emplace_back( it_muon->fggPFIsoSumRelR04() );
@@ -382,7 +381,7 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
         int Njets = 0;
         unsigned int jetCollectionIndex = diphoPtr->jetCollectionIndex();
         for ( const auto& it_jet : Jets[jetCollectionIndex]->ptrs() ) {
-            if ( !it_jet->passesJetID(flashgg::Tight2017) ) continue;
+            if ( !it_jet->passesJetID(flashgg::Loose) ) continue;
             if ( fabs( it_jet->eta() ) > 4.7 ) { continue; }
 
             dataformat.jets_Pt                            .emplace_back( it_jet->pt() );
@@ -393,13 +392,10 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
             dataformat.jets_PtRaw                         .emplace_back( it_jet->correctedJet( "Uncorrected" ).pt() );
             dataformat.jets_QGL                           .emplace_back( it_jet->QGL() );
             dataformat.jets_RMS                           .emplace_back( it_jet->rms() );
-	    dataformat.jets_puJetIdMVA                    .emplace_back( it_jet->puJetIdMVA() );
-	    if (diphotonPtrs.size() > 0) 
-	      {		
-		 dataformat.jets_passesPuJetIdLoose       .emplace_back( it_jet->passesPuJetId( diphotonPtrs[0], PileupJetIdentifier::kLoose ) );
-		 dataformat.jets_passesPuJetIdMedium      .emplace_back( it_jet->passesPuJetId( diphotonPtrs[0], PileupJetIdentifier::kMedium ) );
-		 dataformat.jets_passesPuJetIdTight       .emplace_back( it_jet->passesPuJetId( diphotonPtrs[0], PileupJetIdentifier::kTight ) );
-	      }	   
+	        dataformat.jets_puJetIdMVA                    .emplace_back( it_jet->puJetIdMVA() );
+		    dataformat.jets_passesPuJetIdLoose       .emplace_back( it_jet->passesPuJetId( diphotonPtrs[0], PileupJetIdentifier::kLoose ) );
+		    dataformat.jets_passesPuJetIdMedium      .emplace_back( it_jet->passesPuJetId( diphotonPtrs[0], PileupJetIdentifier::kMedium ) );
+		    dataformat.jets_passesPuJetIdTight       .emplace_back( it_jet->passesPuJetId( diphotonPtrs[0], PileupJetIdentifier::kTight ) );
             dataformat.jets_GenJetMatch                   .emplace_back( it_jet->hasGenMatch() );
             dataformat.jets_pfCombinedInclusiveSecondaryVertexV2BJetTags        
                                                           .emplace_back( it_jet->bDiscriminator( "pfCombinedInclusiveSecondaryVertexV2BJetTags" ) );
@@ -410,11 +406,11 @@ flashggAnaTreeMakerWithSyst::Analyze( const edm::Event &iEvent, const edm::Event
             dataformat.jets_pfDeepCSVJetTags_probudsg     .emplace_back( it_jet->bDiscriminator( "pfDeepCSVJetTags:probudsg" ) );
 
             dataformat.jets_pfDeepFlavourJetTags_probb        .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probb" ) );
-	    dataformat.jets_pfDeepFlavourJetTags_probbb       .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probbb" ) );
-	    dataformat.jets_pfDeepFlavourJetTags_probc        .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probc" ) );
-	    dataformat.jets_pfDeepFlavourJetTags_probuds      .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probuds" ) );
- 	    dataformat.jets_pfDeepFlavourJetTags_probg        .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probg" ) );
-	    dataformat.jets_pfDeepFlavourJetTags_problepb     .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:problepb" ) );
+	        dataformat.jets_pfDeepFlavourJetTags_probbb       .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probbb" ) );
+	        dataformat.jets_pfDeepFlavourJetTags_probc        .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probc" ) );
+	        dataformat.jets_pfDeepFlavourJetTags_probuds      .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probuds" ) );
+ 	        dataformat.jets_pfDeepFlavourJetTags_probg        .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:probg" ) );
+	        dataformat.jets_pfDeepFlavourJetTags_problepb     .emplace_back( it_jet->bDiscriminator( "pfDeepFlavourJetTags:problepb" ) );
 	   
             auto jer = flashggAnalysisNtuplizer::JERUncertainty( *it_jet, *rho, iSetup );
             dataformat.jets_JECScale                      .emplace_back( it_jet->pt() / it_jet->correctedJet( "Uncorrected" ).pt() );
